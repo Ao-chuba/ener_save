@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Household Appliances{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2>Data Entry</h2>
+            <p>Enter your household details to analyze energy consumption</p>
+        </div>
+        <div class="card-body">
+            <h4 class="card-title">Household Appliances</h4>
+            <p class="text-muted">Add all electrical appliances you use regularly</p>
+            
+            <form method="post" id="appliance-form">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end mb-3">  <!-- Added g-3 and align-items-end -->
+                    <div class="col-md-4">  <!-- Adjusted column sizes -->
+                        <label class="form-label">Appliance Type</label>
+                        <select class="form-select" name="appliance_type" required>
+                            <option value="" selected disabled>Select an appliance</option>
+                            <option value="AC">Air Conditioner</option>
+                            <option value="WM">Washing Machine</option>
+                            <option value="FR">Refrigerator</option>
+                            <option value="WH">Water Heater/Geyser</option>
+                            <option value="TV">Television</option>
+                            <option value="MO">Microwave Oven</option>
+                            <option value="CF">Ceiling Fan</option>
+                            <option value="LT">Lights</option>
+                            <option value="PC">Computer/Laptop</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">  <!-- Made columns narrower -->
+                        <label class="form-label">Wattage (W)</label>
+                        <input type="number" class="form-control" name="wattage" min="1" required>
+                    </div>
+                    <div class="col-md-2">  <!-- Made columns narrower -->
+                        <label class="form-label">Hours/Day</label>
+                        <input type="number" class="form-control" name="hours_used" min="0" max="24" step="0.5" required>
+                    </div>
+                    <div class="col-md-2">  <!-- Adjusted column size -->
+                        <button type="submit" class="btn btn-primary w-100">Add</button>
+                    </div>
+                </div>
+            </form>
+            
+            <div class="mt-4">
+                <h5>Added Appliances</h5>
+                <div id="appliances-list" class="list-group mb-3">
+                    {% for appliance in appliances %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ appliance.get_appliance_type_display }}</strong>
+                            <span class="text-muted ms-2">{{ appliance.wattage }}W, {{ appliance.hours_used }} hrs/day</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger remove-appliance" data-id="{{ appliance.id }}">Remove</button>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-info">No appliances added yet. Add an appliance above.</div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'household' %}" class="btn btn-outline-secondary">Back</a>
+                <a href="{% url 'bill' %}" class="btn btn-primary">Continue to Bill</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle appliance removal
+    document.querySelectorAll('.remove-appliance').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const applianceId = this.getAttribute('data-id');
+            fetch(`{% url 'delete_appliance' 0 %}`.replace('0', applianceId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    this.closest('.list-group-item').remove();
+                    if (document.querySelectorAll('#appliances-list .list-group-item').length === 0) {
+                        document.querySelector('#appliances-list').innerHTML = 
+                            '<div class="alert alert-info">No appliances added yet. Add an appliance above.</div>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

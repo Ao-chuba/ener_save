@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Energy Saving Tips{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Tips Section -->
+        <div class="col-lg-7">  <!-- Changed from col-lg-8 to col-lg-7 -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h2>Energy Saving Tips</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Your existing tips content goes here -->
+                    <h4>General Energy Saving Tips</h4>
+                    <ul>
+                        <li>Switch to LED bulbs for better energy efficiency</li>
+                        <li>Unplug devices when not in use to avoid phantom loads</li>
+                        <li>Use natural light during the day</li>
+                        <li>Set your AC to 24-26°C for optimal efficiency</li>
+                        <li>Regular maintenance of appliances improves efficiency</li>
+                    </ul>
+                </div>
+                
+                <div class="card-body">
+                    <h4>Appliance-Specific Tips</h4>
+                    <ul>
+                        <li>For air conditioners, set the temperature to 24-26°C</li>
+                        <li>Ensure refrigerators are properly sealed to prevent energy loss</li>
+                        <li>Use the dishwasher's eco-mode for energy-efficient cleaning</li>
+                        <li>For washing machines, use the eco-mode and wash at 30°C</li>
+                        <li>Use a laptop instead of a desktop computer—it consumes less energy.</li>
+                        <li>For TV, lowering the Brightness & Backlight can save significant energy without sacrificing picture quality.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Section - Made wider by changing col-lg-4 to col-lg-5 -->
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Ask EnergyAssist AI</h3>
+                </div>
+                <div class="card-body">
+                    <div id="chat-container" class="mb-3" style="height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
+                        <div class="message system">
+                            <div class="message-content">
+                                <p>Hello! I'm EnergyAssist AI. I can help you with personalized energy-saving tips. What would you like to know about saving energy in your home?</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="chat-form">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" id="user-message" class="form-control" placeholder="Ask about energy saving..." required>
+                            <button class="btn btn-success" type="submit">Send</button>
+                        </div>
+                        <small class="form-text text-muted">Examples: "How can I save energy with my AC?" or "What's the best temperature for my refrigerator?"</small>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat message styles -->
+<style>
+    .ai-response {
+        white-space: pre-wrap;
+        font-family: inherit;
+        line-height: 1.6;
+    }
+    
+    .ai-response ol {
+        padding-left: 20px;
+        margin: 10px 0;
+        list-style-type: decimal;
+    }
+    
+    .ai-response ul {
+        padding-left: 20px;
+        margin: 5px 0;
+        list-style-type: disc;
+    }
+    
+    .ai-response li {
+        margin-bottom: 5px;
+    }
+    
+    .ai-response strong {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+.message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.message.user {
+    background-color: #007bff;
+    color: white;
+    margin-left: 20%;
+    text-align: right;
+}
+
+.message.system {
+    background-color: #f8f9fa;
+    color: #333;
+    margin-right: 20%;
+    border: 1px solid #dee2e6;
+}
+
+.message-content p {
+    margin: 0;
+}
+
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background-color: #6c757d;
+    border-radius: 50%;
+    animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Chat script loaded');
+        
+        const chatForm = document.getElementById('chat-form');
+        const userMessageInput = document.getElementById('user-message');
+        const chatContainer = document.getElementById('chat-container');
+        
+        // Check if elements exist
+        if (!chatForm || !userMessageInput || !chatContainer) {
+            console.error('Chat elements not found');
+            return;
+        }
+        
+        // Household data
+        const householdData = {
+            {% if household %}
+                rooms: {{ household.rooms }},
+                members: {{ household.members }},
+                appliances: [
+                    {% for appliance in appliances %}
+                        {
+                            type: "{{ appliance.appliance_type }}",
+                            name: "{% if appliance.custom_name %}{{ appliance.custom_name }}{% else %}{{ appliance.get_appliance_type_display }}{% endif %}",
+                            power: {{ appliance.power_rating|default:0 }}
+                        }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            {% else %}
+                rooms: 0,
+                members: 0,
+                appliances: []
+            {% endif %}
+        };
+        
+        console.log('Household data:', householdData);
+    
+        // Format AI response with proper HTML structure
+        function formatAIResponse(text) {
+            // Convert markdown-like lists to HTML
+            text = text.replace(/^\s*\d+\.\s+(.*$)/gm, '<li><strong>$1</strong></li>'); // Numbered items
+            text = text.replace(/^\s*•\s+(.*$)/gm, '<li>$1</li>'); // Bullet points
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold text
+            
+            // Wrap numbered lists in <ol>
+            text = text.replace(/(<li><strong>.*?<\/strong><\/li>)+/g, function(match) {
+                return '<ol>' + match + '</ol>';
+            });
+            
+            // Wrap bullet points in <ul>
+            text = text.replace(/(<li>.*?<\/li>)+/g, function(match) {
+                return '<ul>' + match + '</ul>';
+            });
+            
+            // Preserve line breaks
+            text = text.replace(/\n/g, '<br>');
+            
+            return text;
+        }
+    
+        // Add message to chat
+        function addMessage(content, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'system'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (isUser) {
+                // Simple text for user messages
+                const textP = document.createElement('p');
+                textP.textContent = content;
+                contentDiv.appendChild(textP);
+            } else {
+                // Formatted response for AI
+                const responseDiv = document.createElement('div');
+                responseDiv.className = 'ai-response';
+                responseDiv.innerHTML = formatAIResponse(content);
+                contentDiv.appendChild(responseDiv);
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    
+        // Rest of your existing form submission code remains the same
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Form submitted');
+            
+            const message = userMessageInput.value.trim();
+            if (!message) {
+                console.log('Empty message');
+                return;
+            }
+            
+            console.log('Sending message:', message);
+            addMessage(message, true);
+            userMessageInput.value = '';
+    
+            // Show typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message system';
+            typingDiv.id = 'typing-indicator';
+            typingDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            console.log('CSRF Token:', csrfToken);
+    
+            // Send to server
+            fetch('{% url "gemini_chat" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    message: message,
+                    household_data: householdData
+                })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                
+                // Remove typing indicator
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                if (data.response) {
+                    addMessage(data.response, false);
+                } else if (data.error) {
+                    addMessage(`Error: ${data.error}`, false);
+                } else {
+                    addMessage("Sorry, I couldn't get a response. Please try again.", false);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                
+                // Remove typing indicator
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                addMessage("Error connecting to the server. Please try again.", false);
+            });
+        });
+    });
+    </script>
+{% endblock %}

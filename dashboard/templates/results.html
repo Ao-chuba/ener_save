@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Energy Consumption Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>Energy Consumption Results</h2>
+        </div>
+        <div class="card-body">
+            <h3 class="card-title">Consumption Rating</h3>
+            <div class="alert alert-{{ consumption_data.color }}">
+                <strong>{{ consumption_data.rating }} Consumption</strong>: Your household consumes 
+                <strong>{{ consumption_data.total_kwh }} kWh</strong> per month.
+                <small class="d-block mt-1">Source: {{ consumption_data.consumption_source }}</small>
+            </div>
+
+            <!-- Color Legend -->
+            <div class="mb-3">
+                <span class="badge bg-success me-2">Good: &lt; {{ consumption_data.low_threshold }} kWh</span>
+                <span class="badge bg-warning text-dark me-2">Average: {{ consumption_data.low_threshold }}–{{ consumption_data.high_threshold }} kWh</span>
+                <span class="badge bg-danger">High: &gt; {{ consumption_data.high_threshold }} kWh</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mt-3 mb-4">
+                <label class="form-label">Monthly Usage Compared to National Average</label>
+                <div class="progress">
+                    <div class="progress-bar bg-{{ consumption_data.color }}" role="progressbar"
+                        style="width: {{ consumption_data.usage_percentage }}%;"
+                        aria-valuenow="{{ consumption_data.total_kwh }}"
+                        aria-valuemin="0"
+                        aria-valuemax="{{ consumption_data.high_threshold }}">
+                        {{ consumption_data.total_kwh }} kWh
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <!-- Main Consumption Details Card -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h4 class="card-title">Monthly Consumption Details</h4>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th>Primary Consumption:</th>
+                                        <td>{{ consumption_data.total_kwh }} kWh</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Per Person:</th>
+                                        <td>{{ consumption_data.per_person }} kWh</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Average Reference:</th>
+                                        <td>{{ consumption_data.avg_consumption }} kWh</td>
+                                    </tr>
+                                    {% if bill %}
+                                    <tr>
+                                        <th>Bill Amount:</th>
+                                        <td>₹{{ bill.amount }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Bill Month:</th>
+                                        <td>{{ bill.month|date:"F Y" }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Consumption Comparison Card -->
+                    <div class="card mb-3 border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Consumption Comparison</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <h6 class="text-muted">Appliance Calculation</h6>
+                                        <div class="display-6 text-primary">{{ consumption_data.appliance_based_kwh }}</div>
+                                        <small class="text-muted">kWh/month</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-light text-dark">Based on your appliances</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <h6 class="text-muted">Bill Estimation</h6>
+                                        {% if consumption_data.bill_based_kwh %}
+                                            <div class="display-6 text-success">{{ consumption_data.bill_based_kwh }}</div>
+                                            <small class="text-muted">kWh/month</small>
+                                            <div class="mt-2">
+                                                {% if bill.units_consumed %}
+                                                    <span class="badge bg-light text-dark">From bill units</span>
+                                                {% else %}
+                                                    <span class="badge bg-light text-dark">From bill amount</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <div class="display-6 text-muted">--</div>
+                                            <small class="text-muted">No bill data</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Simple Difference Indicator -->
+                            {% if consumption_data.bill_based_kwh %}
+                            <div class="text-center mt-3 pt-3 border-top">
+                                {% if consumption_data.appliance_based_kwh > consumption_data.bill_based_kwh %}
+                                    <span class="text-warning">
+                                        <i class="fas fa-arrow-up"></i> 
+                                        Appliance calculation is higher than bill
+                                    </span>
+                                {% elif consumption_data.appliance_based_kwh < consumption_data.bill_based_kwh %}
+                                    <span class="text-info">
+                                        <i class="fas fa-arrow-down"></i> 
+                                        Appliance calculation is lower than bill
+                                    </span>
+                                {% else %}
+                                    <span class="text-success">
+                                        <i class="fas fa-check"></i> 
+                                        Perfect match!
+                                    </span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Expected Usage & Bill Card -->
+                    <div class="card bg-light border">
+                        <div class="card-body">
+                            <h5 class="card-title">Expected Usage & Bill</h5>
+                            <p>Based on an average Indian household with {{ household.members }} members and {{ household.rooms }} rooms:</p>
+                            <ul>
+                                <li><strong>Expected Usage:</strong> {{ expected.expected_kwh }} kWh/month</li>
+                                <li><strong>Expected Bill:</strong> ₹{{ expected.expected_bill }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Appliance Breakdown</h4>
+                            <div class="mb-2">
+                                <small class="text-muted">Based on {{ consumption_data.appliance_based_kwh }} kWh appliance calculation</small>
+                            </div>
+                            <canvas id="applianceChart"></canvas>
+                            <div class="mt-3">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Appliance</th>
+                                            <th>kWh/month</th>
+                                            <th>Percentage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for app in consumption_data.appliance_data %}
+                                        <tr>
+                                            <td>{{ app.name }}</td>
+                                            <td>{{ app.kwh }}</td>
+                                            <td>{{ app.percentage }}%</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a href="{% url 'tips' %}" class="btn btn-success">View Energy-Saving Tips</a>
+                <a href="{% url 'bill' %}" class="btn btn-outline-secondary">Update Bill Info</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('applianceChart').getContext('2d');
+        const applianceData = {
+            labels: [
+                {% for app in consumption_data.appliance_data %}
+                    "{{ app.name }}"{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for app in consumption_data.appliance_data %}
+                        {{ app.percentage }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#8AC24A', '#607D8B', '#E91E63', '#00ACC1',
+                    '#8E24AA', '#F4511E', '#43A047'
+                ],
+            }]
+        };
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: applianceData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
